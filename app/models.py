@@ -15,6 +15,5 @@ class GeoJSONGeometry(BaseModel):
 
 class RouteResponse(BaseModel):
     distancia_km: float = Field(..., description="Distancia total en kilómetros")
-    duracion_min: float = Field(..., description="Duración estimada en minutos")
     costo_combustible: float = Field(..., description="Costo estimado en pesos")
     geometria: GeoJSONGeometry
