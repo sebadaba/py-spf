@@ -5,7 +5,7 @@ class RoutingService:
     def __init__(self):
         self.graph_cache = {} 
     
-    def obtener_grafo(self, lat, lon, radio_km=5):
+    def obtener_grafo(self, lat, lon, radio_km):
         tile_lat = round(lat, 2)
         tile_lon = round(lon, 2)
         key = f"{tile_lat},{tile_lon}"
@@ -25,7 +25,7 @@ class RoutingService:
     def calcular_ruta(self, request: RouteRequest) -> RouteResponse:
         """Calcula la ruta más económica usando el algoritmo de Dijkstra"""
         
-        G = self.obtener_grafo(request.origen_lat, request.origen_lon, radio_km=5)
+        G = self.obtener_grafo(request.origen_lat, request.origen_lon, radio_km=10)
         #G = ox.project_graph(G)
 
         
