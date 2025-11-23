@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      font-family: "Segoe UI", sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ---------------- SIDEBAR ---------------- */
+    #sidebar {
+      width: 280px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+    }
+
+    #sidebar h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 4px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 10px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #0078ff;
+      color: white;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #005fcc;
+    }
+
+    .btn-secondary {
+      background: #444;
+    }
+
+    .btn-secondary:hover {
+      background: #222;
+    }
+
+    #status {
+      font-style: italic;
+      font-size: 13px;
+      color: #555;
+      min-height: 20px;
+    }
+
+    #resultados {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 6px;
+      min-height: 40px;
+    }
+
+    /* ---------------- MAP ---------------- */
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Calculador de ruta</h2>
+
+  <button id="btnOrigen" class="btn-secondary">Seleccionar Origen</button>
+  <button id="btnDestino" class="btn-secondary">Seleccionar Destino</button>
+
+  <div class="field">
+    <label>Origen</label>
+    <input id="origenLat" placeholder="lat">
+    <input id="origenLon" placeholder="lon">
+  </div>
+
+  <div class="field">
+    <label>Destino</label>
+    <input id="destinoLat" placeholder="lat">
+    <input id="destinoLon" placeholder="lon">
+  </div>
+
+  <div class="field">
+    <label>Precio combustible (CLP/L)</label>
+    <input id="precio" type="number" value="1200">
+  </div>
+
+  <div class="field">
+    <label>Autonomía (km/L)</label>
+    <input id="autonomia" type="number" value="10">
+  </div>
+
+  <button id="btnCalcular">Calcular Ruta</button>
+
+  <div id="status"></div>
+
+  <div id="resultados"></div>
+</div>
+
+<div id="map"></div>
+
+<script>
+  const map = L.map('map').setView([-33.45, -70.66], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+  let modo = null;
+  let markerOrigen = null;
+  let markerDestino = null;
+  let rutaLayer = null;
+
+  const origenLat = document.getElementById("origenLat");
+  const origenLon = document.getElementById("origenLon");
+  const destinoLat = document.getElementById("destinoLat");
+  const destinoLon = document.getElementById("destinoLon");
+
+  document.getElementById("btnOrigen").onclick = () => {
+    modo = "origen";
+    document.getElementById("status").innerText = "Haz click en el mapa para elegir el origen…";
+  };
+
+  document.getElementById("btnDestino").onclick = () => {
+    modo = "destino";
+    document.getElementById("status").innerText = "Haz click en el mapa para elegir el destino…";
+  };
+
+  map.on("click", e => {
+    if (!modo) return;
+
+    const { lat, lng } = e.latlng;
+
+    if (modo === "origen") {
+      if (markerOrigen) map.removeLayer(markerOrigen);
+      markerOrigen = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: "https://maps.gstatic.com/intl/en_us/mapfiles/ms/micons/green-dot.png",
+          iconSize: [32,32]
+        })
+      }).addTo(map);
+
+      origenLat.value = lat.toFixed(6);
+      origenLon.value = lng.toFixed(6);
+
+    } else if (modo === "destino") {
+      if (markerDestino) map.removeLayer(markerDestino);
+      markerDestino = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: "https://maps.gstatic.com/intl/en_us/mapfiles/ms/micons/red-dot.png",
+          iconSize: [32,32]
+        })
+      }).addTo(map);
+
+      destinoLat.value = lat.toFixed(6);
+      destinoLon.value = lng.toFixed(6);
+    }
+
+    modo = null;
+    document.getElementById("status").innerText = "";
+  });
+
+  document.getElementById("btnCalcular").onclick = async () => {
+    const status = document.getElementById("status");
+    const resultados = document.getElementById("resultados");
+
+    const payload = {
+      origen_lat: parseFloat(origenLat.value),
+      origen_lon: parseFloat(origenLon.value),
+      destino_lat: parseFloat(destinoLat.value),
+      destino_lon: parseFloat(destinoLon.value),
+      precio_combustible: parseFloat(document.getElementById("precio").value),
+      autonomia: parseFloat(document.getElementById("autonomia").value)
+    };
+
+    status.innerText = "Esperando respuesta…";
+    resultados.innerText = "";
+
+    try {
+      const resp = await fetch("/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await resp.json();
+      status.innerText = "";
+
+      if (rutaLayer) map.removeLayer(rutaLayer);
+
+      rutaLayer = L.geoJSON({
+        type: "Feature",
+        geometry: data.geometria
+      }).addTo(map);
+
+      resultados.innerHTML =
+        `Distancia: ${data.distancia_km} km<br>` +
+        `Costo: $${data.costo_combustible}`;
+
+      map.fitBounds(rutaLayer.getBounds());
+
+    } catch (err) {
+      status.innerText = "Error al consultar la API.";
+    }
+  };
+</script>
+
+</body>
+</html>
