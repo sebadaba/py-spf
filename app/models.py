@@ -1,15 +1,20 @@
 from pydantic import BaseModel, Field
+from typing import List
 
 class RouteRequest(BaseModel):
-    origen_lat: float = Field(..., ge=-90, le=90)
-    origen_lon: float = Field(..., ge=-180, le=180)
-    destino_lat: float = Field(..., ge=-90, le=90)
-    destino_lon: float = Field(..., ge=-180, le=180)
-    autonomia: float = Field(..., gt=0)  # km/lt
-    precio_combustible: float = Field(default=1.5)  # $/lt
+    origen_lat: float = Field(..., ge=-90, le=90, description="Latitud del punto de origen")
+    origen_lon: float = Field(..., ge=-180, le=180, description="Longitud del punto de origen")
+    destino_lat: float = Field(..., ge=-90, le=90, description="Latitud del punto de destino")
+    destino_lon: float = Field(..., ge=-180, le=180, description="Longitud del punto de destino")
+    autonomia: float = Field(..., gt=0, description="Autonomía del vehículo en kilómetros por litro")
+    precio_combustible: float = Field(..., description="Precio del combustible en pesos por litro")
+
+class GeoJSONGeometry(BaseModel):
+    type: str = "LineString"
+    coordinates: List[List[float]]
 
 class RouteResponse(BaseModel):
-    distancia_km: float
-    costo_estimado: float
-    ruta_coords: list[tuple[float, float]]
-    nodos: list[int]
+    distancia_km: float = Field(..., description="Distancia total en kilómetros")
+    duracion_min: float = Field(..., description="Duración estimada en minutos")
+    costo_combustible: float = Field(..., description="Costo estimado en pesos")
+    geometria: GeoJSONGeometry
